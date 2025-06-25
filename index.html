@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- 1. A-Frame本体 -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+
+  <!-- 2. polyfill: THREE.Math を THREE.MathUtils につなぐ -->
+  <script>
+    if (typeof THREE !== "undefined" && !THREE.Math) {
+      THREE.Math = {
+        degToRad: function(deg) { return THREE.MathUtils.degToRad(deg); },
+        radToDeg: function(rad) { return THREE.MathUtils.radToDeg(rad); }
+      };
+    }
+  </script>
+
+  <!-- 3. aframe-extras -->
+  <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <style>
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+    a-scene { width:100vw; height:100vh; display:block; }
+  </style>
+</head>
+<body>
+
+ <a-scene vr-mode-ui="enabled: false" background="color: #333">
+
+  <!-- アセット登録 -->
+  <a-assets>
+    <a-asset-item id="tunnelModel" src="models/tunnel.glb"></a-asset-item>
+  </a-assets>
+
+  <!-- モデル -->
+  <a-entity gltf-model="#tunnelModel" rotation="0 90 0"></a-entity>
+
+  <!-- カメラ＋移動リグ（これだけ！） -->
+  <a-entity id="rig" position="0 1.6 2" movement-controls="fly: false; speed: 3">
+    <a-entity camera look-controls></a-entity>
+    <a-entity joystick-controls="cameraRig: #rig; stickRadius: 0.08; deadZone: 0.02"></a-entity>
+  </a-entity>
+</a-scene>
+
+  <!-- 自動スケール用コンポーネント -->
+  <script>
+    AFRAME.registerComponent('auto-scale', {
+      init: function () {
+        this.el.addEventListener('model-loaded', () => {
+          const obj = this.el.getObject3D('mesh');
+          if (!obj) return;
+          // バウンディングボックスを取得
+          const bbox = new THREE.Box3().setFromObject(obj);
+          const size = bbox.getSize(new THREE.Vector3());
+          // 一番大きい軸を 1 に収めるスケール
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 1 / maxDim;
+          // スケール適用
+          this.el.setAttribute('scale', `${scale} ${scale} ${scale}`);
+          // 中心を原点に配置（底面が Y=0 になるように調整）
+          const center = bbox.getCenter(new THREE.Vector3());
+          const minY = bbox.min.y;
+          this.el.setAttribute('position', {
+            x: -center.x * scale,
+            y: -minY * scale,
+            z: -center.z * scale
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
